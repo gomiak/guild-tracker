@@ -7,7 +7,7 @@ export interface GuildMember {
 }
 
 export interface Guild {
-    id: string;
+    id?: string;
     name: string;
     playersOnline: number;
     playersOffline: number;

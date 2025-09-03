@@ -1,16 +1,22 @@
 import { fetchData } from '@/utils/fetchData';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-const API_KEY = process.env.API_KEY;
-
-export async function getGuildData() {
-    const url = `${API_BASE_URL}/api/guild/data`;
-
-    const options: RequestInit = {
-        headers: {
-            'X-API-Key': API_KEY || '',
-        },
+import { Guild } from '@/types/guild';
+import { GuildMember } from '@/types/guild';
+interface GuildAnalysis {
+    info: {
+        name: string;
+        online: number;
+        offline: number;
+        total: number;
     };
+    vocations: Record<string, GuildMember[]>;
+    byLevel: {
+        above: GuildMember[];
+        below: GuildMember[];
+    };
+    sorted: GuildMember[];
+}
 
-    return fetchData<any>(url, options);
+export async function getGuildData(): Promise<GuildAnalysis> {
+    const url = `/api/guild/data`;
+    return fetchData<GuildAnalysis>(url);
 }
