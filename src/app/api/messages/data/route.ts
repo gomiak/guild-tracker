@@ -1,14 +1,12 @@
-
 import { NextRequest, NextResponse } from 'next/server';
 
 const API_URL = process.env.API_URL;
 const API_KEY = process.env.API_KEY;
 
-
 export async function GET() {
     try {
         console.log('📨 GET Messages route called');
-
+        console.log(`${API_URL}/api/messages/data`);
         if (!API_URL || !API_KEY) {
             return NextResponse.json(
                 { error: 'Server configuration error' },
@@ -16,12 +14,12 @@ export async function GET() {
             );
         }
 
-        const response = await fetch(`${API_URL}/api/messages`, {
+        const response = await fetch(`${API_URL}/api/messages/data`, {
             headers: {
                 'X-API-Key': API_KEY,
                 'Content-Type': 'application/json',
             },
-            cache: 'no-store', // Mensagens sempre frescas
+            cache: 'no-store', 
         });
 
         if (!response.ok) {
@@ -66,7 +64,7 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const response = await fetch(`${API_URL}/api/messages`, {
+        const response = await fetch(`${API_URL}/api/messages/data`, {
             method: 'POST',
             headers: {
                 'X-API-Key': API_KEY,

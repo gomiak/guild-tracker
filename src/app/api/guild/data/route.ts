@@ -12,7 +12,7 @@ export async function GET() {
                 { status: 500 },
             );
         }
-
+        console.log(`${API_URL}/api/guild/data`);
         const response = await fetch(`${API_URL}/api/guild/data`, {
             headers: {
                 'X-API-Key': API_KEY,
