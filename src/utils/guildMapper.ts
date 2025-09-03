@@ -1,4 +1,3 @@
-
 export function mapGuildData(apiData: any) {
     return {
         id: apiData.id,
@@ -7,5 +6,6 @@ export function mapGuildData(apiData: any) {
         playersOnline: apiData.players_online,
         playersOffline: apiData.players_offline,
         membersTotal: apiData.members_total,
+        lastSeen: apiData.lastSeen,
     };
 }
