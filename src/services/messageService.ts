@@ -4,7 +4,7 @@ export interface MemberMessage {
 }
 
 export async function getMessages(): Promise<MemberMessage[]> {
-    const response = await fetch('/api/messages');
+    const response = await fetch('/api/messages/data');
     if (!response.ok) throw new Error('Erro ao buscar mensagens');
     return response.json();
 }
@@ -17,7 +17,7 @@ export async function saveMessage(
         throw new Error('Mensagem deve ter no máximo 50 caracteres');
     }
 
-    const response = await fetch('/api/messages', {
+    const response = await fetch('/api/messages/data', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
