@@ -1,5 +1,6 @@
 'use client';
 
+
 import { useEffect, useState } from "react";
 import { getGuildData } from "@/services/guildService"; 
 import { getMessages, saveMessage } from "@/services/messageService";
@@ -63,6 +64,7 @@ const OnlineTimer = ({ lastSeen }: { lastSeen: Date }) => {
 
 
 export default function GuildPage() {
+    
     const [guild, setGuild] = useState<GuildAnalysis | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -74,6 +76,7 @@ export default function GuildPage() {
 
     const VOCATIONS = ['Druid', 'Knight', 'Sorcerer', 'Paladin', 'Monk'];
 
+    
     const sortByLevelDesc = (members: GuildMember[]): GuildMember[] => {
         return [...members].sort((a, b) => b.level - a.level);
     };
@@ -176,7 +179,6 @@ export default function GuildPage() {
 
     const MemberRow = ({ member, isMain = false }: { member: GuildMember; isMain?: boolean }) => (
         <tr key={member.name} className="border-b border-gray-700 hover:bg-gray-700">
-            {/* Nome - 35% (AUMENTADO) */}
             <td className="p-1 truncate max-w-[100px]">
                 <span
                     className="cursor-pointer text-blue-300 hover:text-blue-200 text-xs"
@@ -187,19 +189,16 @@ export default function GuildPage() {
                 </span>
             </td>
             
-            {/* Level - 15% */}
             <td className="p-1 text-center">
                 <span className={`${isMain ? 'bg-green-600' : 'bg-blue-600'} text-white px-1 py-0.5 rounded text-xs`}>
                     {member.level}
                 </span>
             </td>
             
-            {/* Timer Online - 15% */}
             <td className="p-1 text-center">
                 <OnlineTimer lastSeen={member.lastSeen} />
             </td>
-            
-            {/* Observação - 35% (DIMINUIDO) */}
+
             <td className="p-1 truncate max-w-[100px]">
                 {editingMember === member.name ? (
                     <div className="flex gap-0.5">
@@ -255,7 +254,6 @@ export default function GuildPage() {
                     )}
                 </div>
 
-                {/* Mains (Level 100+) */}
                 <div className="mb-4">
                     <h2 className="text-lg font-bold mb-2 text-center text-green-600">Mains (Level 100+)</h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 w-full">
@@ -294,7 +292,6 @@ export default function GuildPage() {
                     </div>
                 </div>
 
-                {/* Bombas (Level 100-) */}
                 <div>
                     <h2 className="text-lg font-bold mb-2 text-center text-blue-600">Bombas (Level 100-)</h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 w-full">
