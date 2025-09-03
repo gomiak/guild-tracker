@@ -1,9 +1,23 @@
-export async function fetchData<T>(url: string): Promise<T> {
-    const res = await fetch(url);
+export async function fetchData<T>(
+    url: string,
+    options: RequestInit = {},
+): Promise<T> {
+    try {
+        const response = await fetch(url, {
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers,
+            },
+        });
 
-    if (!res.ok) {
-        throw new Error(`Erro na requisição: ${res.statusText}`);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Fetch error:', error);
+        throw error;
     }
-
-    return res.json() as Promise<T>;
 }

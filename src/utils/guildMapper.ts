@@ -1,4 +1,4 @@
-// @/utils/guildMapper.ts
+
 export function mapGuildData(apiData: any) {
     return {
         id: apiData.id,
