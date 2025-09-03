@@ -1,14 +1,13 @@
 import { fetchData } from '@/utils/fetchData';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-const API_KEY = process.env.API_KEY;
+const API_BASE_URL = ''; 
 
 export async function getGuildData() {
-    const url = `${API_BASE_URL}/api/guild/data`;
+    const url = `https://guild-tracker-api.onrender.com/api/guild/data`; 
 
     const options: RequestInit = {
         headers: {
-            'X-API-Key': API_KEY || '',
+            'Content-Type': 'application/json',
         },
     };
 

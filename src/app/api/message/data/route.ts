@@ -1,0 +1,91 @@
+
+import { NextRequest, NextResponse } from 'next/server';
+
+const API_URL = process.env.API_URL;
+const API_KEY = process.env.API_KEY;
+
+
+export async function GET(request: NextRequest) {
+    try {
+        console.log('📨 GET Messages route called');
+
+        if (!API_URL || !API_KEY) {
+            return NextResponse.json(
+                { error: 'Server configuration error' },
+                { status: 500 },
+            );
+        }
+
+        const response = await fetch(`${API_URL}/api/messages`, {
+            headers: {
+                'X-API-Key': API_KEY,
+                'Content-Type': 'application/json',
+            },
+            cache: 'no-store', // Mensagens sempre frescas
+        });
+
+        if (!response.ok) {
+            throw new Error(`Backend returned ${response.status}`);
+        }
+
+        const data = await response.json();
+        return NextResponse.json(data);
+    } catch (error) {
+        console.error('GET Messages error:', error);
+        return NextResponse.json(
+            { error: 'Failed to fetch messages' },
+            { status: 502 },
+        );
+    }
+}
+
+export async function POST(request: NextRequest) {
+    try {
+        console.log('💾 POST Messages route called');
+
+        if (!API_URL || !API_KEY) {
+            return NextResponse.json(
+                { error: 'Server configuration error' },
+                { status: 500 },
+            );
+        }
+
+        const { name, message } = await request.json();
+
+        if (!name || !message) {
+            return NextResponse.json(
+                { error: 'Name and message are required' },
+                { status: 400 },
+            );
+        }
+
+        if (message.length > 50) {
+            return NextResponse.json(
+                { error: 'Message must be 50 characters or less' },
+                { status: 400 },
+            );
+        }
+
+        const response = await fetch(`${API_URL}/api/messages`, {
+            method: 'POST',
+            headers: {
+                'X-API-Key': API_KEY,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ name, message }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`Backend returned ${response.status}`);
+        }
+
+        const data = await response.json();
+        return NextResponse.json(data);
+    } catch (error) {
+        console.error('POST Messages error:', error);
+        return NextResponse.json(
+            { error: 'Failed to save message' },
+            { status: 502 },
+        );
+    }
+}

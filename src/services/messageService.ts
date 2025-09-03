@@ -1,12 +1,10 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-
 export interface MemberMessage {
     name: string;
     message: string;
 }
 
 export async function getMessages(): Promise<MemberMessage[]> {
-    const response = await fetch(`${API_BASE_URL}/api/messages`);
+    const response = await fetch('/api/messages');
     if (!response.ok) throw new Error('Erro ao buscar mensagens');
     return response.json();
 }
@@ -19,7 +17,7 @@ export async function saveMessage(
         throw new Error('Mensagem deve ter no máximo 50 caracteres');
     }
 
-    const response = await fetch(`${API_BASE_URL}/api/messages`, {
+    const response = await fetch('/api/messages', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
