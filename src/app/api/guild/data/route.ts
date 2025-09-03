@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
     try {
         const API_URL = process.env.API_URL;
         const API_KEY = process.env.API_KEY;

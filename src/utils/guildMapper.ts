@@ -1,11 +1,19 @@
-export function mapGuildData(apiData: any) {
+import { Guild } from '@/types/guild';
+
+export function mapGuildData(apiData: {
+    guild: {
+        name: string;
+        members: any[];
+        players_online: number;
+        players_offline: number;
+        members_total: number;
+    };
+}): Guild {
     return {
-        id: apiData.id,
-        name: apiData.name,
-        members: apiData.members,
-        playersOnline: apiData.players_online,
-        playersOffline: apiData.players_offline,
-        membersTotal: apiData.members_total,
-        lastSeen: apiData.lastSeen,
+        name: apiData.guild.name,
+        members: apiData.guild.members,
+        playersOnline: apiData.guild.players_online,
+        playersOffline: apiData.guild.players_offline,
+        membersTotal: apiData.guild.members_total,
     };
 }

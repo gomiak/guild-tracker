@@ -5,7 +5,7 @@ const API_URL = process.env.API_URL;
 const API_KEY = process.env.API_KEY;
 
 
-export async function GET(request: NextRequest) {
+export async function GET() {
     try {
         console.log('📨 GET Messages route called');
 

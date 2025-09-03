@@ -175,7 +175,7 @@ export default function GuildPage() {
         </div>
     );
 
-    const { info, vocations, byLevel } = guild;
+    const { info, vocations } = guild;
 
     const MemberRow = ({ member, isMain = false }: { member: GuildMember; isMain?: boolean }) => (
         <tr key={member.name} className="border-b border-gray-700 hover:bg-gray-700">

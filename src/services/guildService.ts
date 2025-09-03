@@ -1,15 +1,22 @@
 import { fetchData } from '@/utils/fetchData';
-
-const API_BASE_URL = ''; 
-
-export async function getGuildData() {
-    const url = `https://guild-tracker-api.onrender.com/api/guild/data`; 
-
-    const options: RequestInit = {
-        headers: {
-            'Content-Type': 'application/json',
-        },
+import { Guild } from '@/types/guild';
+import { GuildMember } from '@/types/guild';
+interface GuildAnalysis {
+    info: {
+        name: string;
+        online: number;
+        offline: number;
+        total: number;
     };
+    vocations: Record<string, GuildMember[]>;
+    byLevel: {
+        above: GuildMember[];
+        below: GuildMember[];
+    };
+    sorted: GuildMember[];
+}
 
-    return fetchData<any>(url, options);
+export async function getGuildData(): Promise<GuildAnalysis> {
+    const url = `/api/guild/data`;
+    return fetchData<GuildAnalysis>(url);
 }
