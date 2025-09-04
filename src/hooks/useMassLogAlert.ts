@@ -62,19 +62,15 @@ export function useMassLogAlert() {
     }, [lastAlertTime, config.cooldownMinutes]);
 
     const playAlertSound = useCallback(() => {
-        console.log('🎵 Tentando tocar som...');
-
         if (config.cooldownMinutes > 0 && lastAlertTime > 0) {
             const now = Date.now();
             const cooldownMs = config.cooldownMinutes * 60 * 1000;
             if (now - lastAlertTime < cooldownMs) {
-                console.log('🔇 Em cooldown, não tocando');
                 return;
             }
         }
 
         if (!config.soundEnabled) {
-            console.log('🔇 Som desativado nas configurações');
             return;
         }
 
@@ -87,17 +83,14 @@ export function useMassLogAlert() {
             audio
                 .play()
                 .then(() => {
-                    console.log('🔊 Som tocado com sucesso');
-                    const now = Date.now();
-                    setLastAlertTime(now);
-                    localStorage.setItem('lastAlertTime', now.toString());
+                    if (config.cooldownMinutes > 0) {
+                        const now = Date.now();
+                        setLastAlertTime(now);
+                        localStorage.setItem('lastAlertTime', now.toString());
+                    }
                 })
-                .catch((error) => {
-                    console.log('🔇 Autoplay bloqueado:', error);
-                });
-        } catch (error) {
-            console.log('❌ Erro ao tocar som:', error);
-        }
+                .catch(() => {});
+        } catch (error) {}
     }, [
         config.soundEnabled,
         config.soundVolume,
@@ -108,7 +101,6 @@ export function useMassLogAlert() {
     const resetCooldown = useCallback(() => {
         setLastAlertTime(0);
         localStorage.removeItem('lastAlertTime');
-        console.log('🔄 Cooldown resetado manualmente');
     }, []);
 
     const checkMassLogs = useCallback(
@@ -129,7 +121,7 @@ export function useMassLogAlert() {
 
             if (recentLogins.length >= config.redAlertPlayers) {
                 setCurrentAlert('red');
-                playAlertSound(); 
+                playAlertSound();
             } else if (recentLogins.length >= config.yellowAlertPlayers) {
                 setCurrentAlert('yellow');
             } else {
@@ -141,7 +133,7 @@ export function useMassLogAlert() {
             config.yellowAlertPlayers,
             config.redAlertPlayers,
             config.timeWindow,
-            playAlertSound, 
+            playAlertSound,
         ],
     );
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { AlertTriangle, AlertCircle, Clock, Volume2 } from 'lucide-react';
 import { MassLogAlertConfig } from '@/hooks/useMassLogAlert';
 
 interface Props {
@@ -45,6 +46,7 @@ export default function MassLogConfig({ config, onSave, onClose }: Props) {
 
         <div className="mb-4">
           <label htmlFor="yellowAlertPlayers" className="block mb-1 text-sm">
+            <AlertTriangle className="inline mr-1" size={16} />
             Alerta Amarelo (players):
           </label>
           <input
@@ -66,6 +68,7 @@ export default function MassLogConfig({ config, onSave, onClose }: Props) {
 
         <div className="mb-4">
           <label htmlFor="redAlertPlayers" className="block mb-1 text-sm">
+            <AlertCircle className="inline mr-1" size={16} />
             Alerta Vermelho (players):
           </label>
           <input
@@ -87,6 +90,7 @@ export default function MassLogConfig({ config, onSave, onClose }: Props) {
 
         <div className="mb-4">
           <label htmlFor="timeWindow" className="block mb-1 text-sm">
+            <Clock className="inline mr-1" size={16} />
             Tempo de verificação (minutos):
           </label>
           <input
@@ -108,6 +112,7 @@ export default function MassLogConfig({ config, onSave, onClose }: Props) {
 
         <div className="mb-4">
           <label htmlFor="cooldownMinutes" className="block mb-1 text-sm">
+            <Clock className="inline mr-1" size={16} />
             Cooldown do alerta (minutos):
           </label>
           <input
@@ -116,17 +121,24 @@ export default function MassLogConfig({ config, onSave, onClose }: Props) {
             min="0"
             max="120"
             value={formData.cooldownMinutes}
-            onChange={(e) => setFormData({ ...formData, cooldownMinutes: parseInt(e.target.value) || 10 })}
+            onChange={(e) => setFormData({ ...formData, cooldownMinutes: parseInt(e.target.value) || 0 })}
             className="w-full p-2 bg-gray-700 border border-gray-600 rounded"
-            placeholder="Ex: 10"
+            placeholder="Ex: 0 (sempre) ou 10 (minutos)"
             title="Tempo de espera entre alertas consecutivos"
             aria-describedby="cooldownHelp"
           />
-          <p id="cooldownHelp" className="text-xs text-gray-400 mt-1">
-            {formData.cooldownMinutes === 0 ? 
-              '⚠️ Alertas tocarão sempre' : 
-              `⏳ Próximo alerta após ${formData.cooldownMinutes}min`
-            }
+          <p id="cooldownHelp" className="text-xs text-gray-400 mt-1 flex items-center">
+            {formData.cooldownMinutes === 0 ? (
+              <>
+                <AlertTriangle className="mr-1" size={14} />
+                Alertas tocarão a cada atualização
+              </>
+            ) : (
+              <>
+                <Clock className="mr-1" size={14} />
+                Próximo alerta após {formData.cooldownMinutes}min
+              </>
+            )}
           </p>
         </div>
 
@@ -139,6 +151,7 @@ export default function MassLogConfig({ config, onSave, onClose }: Props) {
               className="mr-2"
               aria-label="Ativar som de alerta"
             />
+            <Volume2 className="mr-1" size={16} />
             Ativar som de alerta
           </label>
         </div>
@@ -146,22 +159,23 @@ export default function MassLogConfig({ config, onSave, onClose }: Props) {
         {formData.soundEnabled && (
           <div className="mb-4">
             <label htmlFor="soundVolume" className="block mb-1 text-sm">
+              <Volume2 className="inline mr-1" size={16} />
               Volume do som (%):
             </label>
             <input
-                id="soundVolume"
-                type="range"
-                min="0"
-                max="100"
-                value={formData.soundVolume}
-                onChange={(e) => setFormData({ ...formData, soundVolume: parseInt(e.target.value) })}
-                className="w-full"
-                title={`Volume atual: ${formData.soundVolume}%`}
-                aria-valuenow={formData.soundVolume}
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-valuetext={`${formData.soundVolume} por cento`}
-                />
+              id="soundVolume"
+              type="range"
+              min="0"
+              max="100"
+              value={formData.soundVolume}
+              onChange={(e) => setFormData({ ...formData, soundVolume: parseInt(e.target.value) })}
+              className="w-full"
+              title={`Volume atual: ${formData.soundVolume}%`}
+              aria-valuenow={formData.soundVolume}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuetext={`${formData.soundVolume} por cento`}
+            />
             <span className="text-xs text-gray-400">{formData.soundVolume}%</span>
           </div>
         )}
