@@ -62,12 +62,8 @@ export function useMassLogAlert() {
     }, [lastAlertTime, config.cooldownMinutes]);
 
     const playAlertSound = useCallback(() => {
-        if (config.cooldownMinutes > 0 && lastAlertTime > 0) {
-            const now = Date.now();
-            const cooldownMs = config.cooldownMinutes * 60 * 1000;
-            if (now - lastAlertTime < cooldownMs) {
-                return;
-            }
+        if (isOnCooldown()) {
+            return;
         }
 
         if (!config.soundEnabled) {
@@ -95,7 +91,7 @@ export function useMassLogAlert() {
         config.soundEnabled,
         config.soundVolume,
         config.cooldownMinutes,
-        lastAlertTime,
+        isOnCooldown, 
     ]);
 
     const resetCooldown = useCallback(() => {
@@ -121,6 +117,7 @@ export function useMassLogAlert() {
 
             if (recentLogins.length >= config.redAlertPlayers) {
                 setCurrentAlert('red');
+
                 playAlertSound();
             } else if (recentLogins.length >= config.yellowAlertPlayers) {
                 setCurrentAlert('yellow');
