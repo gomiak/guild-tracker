@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { redirect } from 'next/navigation';
 
 export default function Home() {
+  redirect('/guild');
   return (
     <div className="font-sans min-h-screen flex flex-col items-center justify-center p-8 sm:p-20 gap-8">
       <h1 className="text-lg text-center">Welcome to guild tracker</h1>
