@@ -6,7 +6,7 @@ import { getMessages, saveMessage } from "@/services/messageService";
 import { GuildMember } from "@/types/guild";
 import { useMassLogAlert } from "@/hooks/useMassLogAlert";
 import MassLogConfig from "@/components/MassLogConfig";
-import { Settings, AlertTriangle, AlertCircle, Users, UserCheck, UserX, Clock, Copy, Check, X, RotateCw, RefreshCw } from "lucide-react";
+import { Settings, AlertTriangle, AlertCircle, Users, UserCheck, UserX, Clock, Copy, Check, X, RotateCw, RefreshCw, ArrowUp, ArrowDown } from "lucide-react";
 
 interface GuildAnalysis {
     info: {
@@ -75,13 +75,68 @@ export default function GuildPage() {
     const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
     const [saving, setSaving] = useState<string | null>(null);
     const [showConfig, setShowConfig] = useState(false);
+    
+    // Estados para ordenação
+    const [sortConfig, setSortConfig] = useState<{
+        key: 'name' | 'level' | 'lastSeen';
+        direction: 'asc' | 'desc';
+    }>({
+        key: 'level',
+        direction: 'desc'
+    });
 
     const { config, saveConfig, currentAlert, setCurrentAlert, checkMassLogs, lastAlertTime, resetCooldown, isOnCooldown } = useMassLogAlert();
     const VOCATIONS = ['Druid', 'Knight', 'Sorcerer', 'Paladin', 'Monk'];
 
-    
-    const sortByLevelDesc = (members: GuildMember[]): GuildMember[] => {
-        return [...members].sort((a, b) => b.level - a.level);
+    // Função para ordenar membros
+    const sortMembers = (members: GuildMember[]): GuildMember[] => {
+        if (!members) return [];
+        
+        return [...members].sort((a, b) => {
+            let aValue: any, bValue: any;
+            
+            switch (sortConfig.key) {
+                case 'name':
+                    aValue = a.name.toLowerCase();
+                    bValue = b.name.toLowerCase();
+                    break;
+                case 'level':
+                    aValue = a.level;
+                    bValue = b.level;
+                    break;
+                case 'lastSeen':
+                    aValue = new Date(a.lastSeen).getTime();
+                    bValue = new Date(b.lastSeen).getTime();
+                    break;
+                default:
+                    return 0;
+            }
+            
+            if (aValue < bValue) {
+                return sortConfig.direction === 'asc' ? -1 : 1;
+            }
+            if (aValue > bValue) {
+                return sortConfig.direction === 'asc' ? 1 : -1;
+            }
+            return 0;
+        });
+    };
+
+    // Manipulador de clique para ordenação
+    const handleSort = (key: 'name' | 'level' | 'lastSeen') => {
+        setSortConfig(prev => ({
+            key,
+            direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+        }));
+    };
+
+    // Componente para renderizar o ícone de ordenação
+    const SortIcon = ({ columnKey }: { columnKey: 'name' | 'level' | 'lastSeen' }) => {
+        if (sortConfig.key !== columnKey) return null;
+        
+        return sortConfig.direction === 'asc' ? 
+            <ArrowUp size={12} className="inline ml-1" /> : 
+            <ArrowDown size={12} className="inline ml-1" />;
     };
 
     useEffect(() => {
@@ -98,32 +153,33 @@ export default function GuildPage() {
         loadMessages();
     }, []);
 
-useEffect(() => {
-    let intervalId: NodeJS.Timeout;
-    
-    const fetchGuild = async () => {
-        try {
-            const data = await getGuildData(); 
-            setGuild(data);
-            setLastUpdate(new Date());
-            
-            if (data.sorted) {
-                checkMassLogs(data.sorted); 
+    useEffect(() => {
+        let intervalId: NodeJS.Timeout;
+        
+        const fetchGuild = async () => {
+            try {
+                const data = await getGuildData(); 
+                setGuild(data);
+                setLastUpdate(new Date());
+                
+                if (data.sorted) {
+                    checkMassLogs(data.sorted); 
+                }
+            } catch (err: any) {
+                setError(err.message);
+            } finally {
+                setLoading(false);
             }
-        } catch (err: any) {
-            setError(err.message);
-        } finally {
-            setLoading(false);
-        }
-    };
-    
-    fetchGuild();
-    intervalId = setInterval(fetchGuild, 30000);
-    
-    return () => {
-        if (intervalId) clearInterval(intervalId);
-    };
-}, [checkMassLogs]); 
+        };
+        
+        fetchGuild();
+        intervalId = setInterval(fetchGuild, 30000);
+        
+        return () => {
+            if (intervalId) clearInterval(intervalId);
+        };
+    }, [checkMassLogs]); 
+
     const handleEditStart = (member: GuildMember) => {
         setEditingMember(member.name);
         setEditMessage(messages.get(member.name) || "");
@@ -350,14 +406,29 @@ useEffect(() => {
                                             <table className="w-full">
                                                 <thead>
                                                     <tr className="border-b border-gray-600">
-                                                        <th className="text-left p-1 text-xs text-gray-400 w-[45%]">Nome</th>
-                                                        <th className="text-center p-1 text-xs text-gray-400 w-[10%]">Level</th>
-                                                        <th className="text-center p-1 text-xs text-gray-400 w-[10%]">Online</th>
+                                                        <th 
+                                                            className="text-left p-1 text-xs text-gray-400 w-[45%] cursor-pointer hover:bg-gray-700"
+                                                            onClick={() => handleSort('name')}
+                                                        >
+                                                            Nome <SortIcon columnKey="name" />
+                                                        </th>
+                                                        <th 
+                                                            className="text-center p-1 text-xs text-gray-400 w-[10%] cursor-pointer hover:bg-gray-700"
+                                                            onClick={() => handleSort('level')}
+                                                        >
+                                                            Level <SortIcon columnKey="level" />
+                                                        </th>
+                                                        <th 
+                                                            className="text-center p-1 text-xs text-gray-400 w-[10%] cursor-pointer hover:bg-gray-700"
+                                                            onClick={() => handleSort('lastSeen')}
+                                                        >
+                                                            Online <SortIcon columnKey="lastSeen" />
+                                                        </th>
                                                         <th className="text-left p-1 text-xs text-gray-400 w-[35%]">Obs</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    {sortByLevelDesc(mains).map(member => (
+                                                    {sortMembers(mains).map(member => (
                                                         <MemberRow key={member.name} member={member} isMain={true} />
                                                     ))}
                                                 </tbody>
@@ -388,14 +459,29 @@ useEffect(() => {
                                             <table className="w-full">
                                                 <thead>
                                                     <tr className="border-b border-gray-600">
-                                                        <th className="text-left p-1 text-xs text-gray-400 w-[35%]">Nome</th>
-                                                        <th className="text-center p-1 text-xs text-gray-400 w-[15%]">Level</th>
-                                                        <th className="text-center p-1 text-xs text-gray-400 w-[15%]">Online</th>
+                                                        <th 
+                                                            className="text-left p-1 text-xs text-gray-400 w-[35%] cursor-pointer hover:bg-gray-700"
+                                                            onClick={() => handleSort('name')}
+                                                        >
+                                                            Nome <SortIcon columnKey="name" />
+                                                        </th>
+                                                        <th 
+                                                            className="text-center p-1 text-xs text-gray-400 w-[15%] cursor-pointer hover:bg-gray-700"
+                                                            onClick={() => handleSort('level')}
+                                                        >
+                                                            Level <SortIcon columnKey="level" />
+                                                        </th>
+                                                        <th 
+                                                            className="text-center p-1 text-xs text-gray-400 w-[15%] cursor-pointer hover:bg-gray-700"
+                                                            onClick={() => handleSort('lastSeen')}
+                                                        >
+                                                            Online <SortIcon columnKey="lastSeen" />
+                                                        </th>
                                                         <th className="text-left p-1 text-xs text-gray-400 w-[35%]">Obs</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    {sortByLevelDesc(bombas).map(member => (
+                                                    {sortMembers(bombas).map(member => (
                                                         <MemberRow key={member.name} member={member} />
                                                     ))}
                                                 </tbody>
