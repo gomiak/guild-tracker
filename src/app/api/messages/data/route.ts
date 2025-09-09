@@ -46,6 +46,7 @@ export async function POST(request: NextRequest) {
 
         const { name, message } = await request.json();
 
+        // Validação de entrada
         if (!name || !message) {
             return NextResponse.json(
                 { error: 'Name and message are required' },
@@ -53,9 +54,30 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        if (typeof name !== 'string' || typeof message !== 'string') {
+            return NextResponse.json(
+                { error: 'Name and message must be strings' },
+                { status: 400 },
+            );
+        }
+
+        if (name.trim().length === 0 || message.trim().length === 0) {
+            return NextResponse.json(
+                { error: 'Name and message cannot be empty' },
+                { status: 400 },
+            );
+        }
+
         if (message.length > 50) {
             return NextResponse.json(
                 { error: 'Message must be 50 characters or less' },
+                { status: 400 },
+            );
+        }
+
+        if (name.length > 50) {
+            return NextResponse.json(
+                { error: 'Name must be 50 characters or less' },
                 { status: 400 },
             );
         }
