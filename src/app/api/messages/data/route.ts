@@ -5,8 +5,6 @@ const API_KEY = process.env.API_KEY;
 
 export async function GET() {
     try {
-        console.log('📨 GET Messages route called');
-        console.log(`${API_URL}/api/messages/data`);
         if (!API_URL || !API_KEY) {
             return NextResponse.json(
                 { error: 'Server configuration error' },
@@ -19,7 +17,7 @@ export async function GET() {
                 'X-API-Key': API_KEY,
                 'Content-Type': 'application/json',
             },
-            cache: 'no-store', 
+            cache: 'no-store',
         });
 
         if (!response.ok) {
@@ -39,8 +37,6 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
     try {
-        console.log('💾 POST Messages route called');
-
         if (!API_URL || !API_KEY) {
             return NextResponse.json(
                 { error: 'Server configuration error' },

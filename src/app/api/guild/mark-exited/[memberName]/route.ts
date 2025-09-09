@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET() {
+export async function POST(
+    request: NextRequest,
+    { params }: { params: Promise<{ memberName: string }> },
+) {
     try {
         const API_URL = process.env.API_URL;
         const API_KEY = process.env.API_KEY;
@@ -12,12 +15,20 @@ export async function GET() {
                 { status: 500 },
             );
         }
-        const response = await fetch(`${API_URL}/api/guild/data`, {
-            headers: {
-                'X-API-Key': API_KEY,
-                'Content-Type': 'application/json',
+
+        const { memberName } = await params;
+        const response = await fetch(
+            `${API_URL}/api/guild/mark-exited/${encodeURIComponent(
+                memberName,
+            )}`,
+            {
+                method: 'POST',
+                headers: {
+                    'X-API-Key': API_KEY,
+                    'Content-Type': 'application/json',
+                },
             },
-        });
+        );
 
         if (!response.ok) {
             throw new Error(`Backend returned ${response.status}`);
@@ -28,7 +39,7 @@ export async function GET() {
     } catch (error) {
         console.error('API Route error:', error);
         return NextResponse.json(
-            { error: 'Failed to fetch guild data' },
+            { error: 'Failed to mark member as exited' },
             { status: 502 },
         );
     }

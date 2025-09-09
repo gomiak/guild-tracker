@@ -4,6 +4,7 @@ export interface GuildMember {
     level: number;
     status: string;
     lastSeen: Date;
+    isExited: boolean;
 }
 
 export interface Guild {
@@ -17,4 +18,25 @@ export interface Guild {
 
 export interface GuildResponse {
     guild: Guild;
+}
+
+export interface GuildAnalysis {
+    info: {
+        name: string;
+        online: number;
+        offline: number;
+        total: number;
+    };
+    vocations: Record<string, GuildMember[]>;
+    exitedVocations: Record<string, GuildMember[]>;
+    byLevel: {
+        above: GuildMember[];
+        below: GuildMember[];
+    };
+    sorted: GuildMember[];
+    exitedByLevel: {
+        above: GuildMember[];
+        below: GuildMember[];
+    };
+    exitedSorted: GuildMember[];
 }

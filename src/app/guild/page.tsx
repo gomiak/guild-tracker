@@ -1,12 +1,12 @@
 'use client';
 
 import { useEffect, useState } from "react";
-import { getGuildData } from "@/services/guildService"; 
+import { getGuildData, markMemberAsExited, unmarkMemberAsExited } from "@/services/guildService"; 
 import { getMessages, saveMessage } from "@/services/messageService";
 import { GuildMember } from "@/types/guild";
 import { useMassLogAlert } from "@/hooks/useMassLogAlert";
 import MassLogConfig from "@/components/MassLogConfig";
-import { Settings, AlertTriangle, AlertCircle, Users, UserCheck, UserX, Clock, Copy, Check, X, RotateCw, RefreshCw, ArrowUp, ArrowDown } from "lucide-react";
+import { Settings, AlertTriangle, AlertCircle, Users, UserCheck, UserX, Clock, Copy, Check, X, RotateCw, RefreshCw, ArrowUp, ArrowDown, UserMinus, UserPlus } from "lucide-react";
 
 interface GuildAnalysis {
     info: {
@@ -16,6 +16,7 @@ interface GuildAnalysis {
         total: number;
     };
     vocations: Record<string, GuildMember[]>;
+    exitedVocations: Record<string, GuildMember[]>;
     byLevel: {
         above: GuildMember[];
         below: GuildMember[];
@@ -75,6 +76,7 @@ export default function GuildPage() {
     const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
     const [saving, setSaving] = useState<string | null>(null);
     const [showConfig, setShowConfig] = useState(false);
+    const [processingExit, setProcessingExit] = useState<string | null>(null);
     
     // Estados para ordenação
     const [sortConfig, setSortConfig] = useState<{
@@ -124,7 +126,7 @@ export default function GuildPage() {
 
     // Manipulador de clique para ordenação
     const handleSort = (key: 'name' | 'level' | 'lastSeen') => {
-        setSortConfig(prev => ({
+        setSortConfig((prev: any) => ({
             key,
             direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
         }));
@@ -154,9 +156,15 @@ export default function GuildPage() {
     }, []);
 
     useEffect(() => {
-        let intervalId: NodeJS.Timeout;
+        let intervalId: any;
+        let isFetching = false;
         
         const fetchGuild = async () => {
+            if (isFetching) {
+                return;
+            }
+            
+            isFetching = true;
             try {
                 const data = await getGuildData(); 
                 setGuild(data);
@@ -166,9 +174,11 @@ export default function GuildPage() {
                     checkMassLogs(data.sorted); 
                 }
             } catch (err: any) {
+                console.error('Erro no fetch:', err);
                 setError(err.message);
             } finally {
                 setLoading(false);
+                isFetching = false;
             }
         };
         
@@ -178,7 +188,7 @@ export default function GuildPage() {
         return () => {
             if (intervalId) clearInterval(intervalId);
         };
-    }, [checkMassLogs]); 
+    }, []); // Removido checkMassLogs da dependência 
 
     const handleEditStart = (member: GuildMember) => {
         setEditingMember(member.name);
@@ -190,7 +200,7 @@ export default function GuildPage() {
             setSaving(memberName);
             try {
                 await saveMessage(memberName, editMessage.trim());
-                setMessages(prev => new Map(prev.set(memberName, editMessage.trim())));
+                setMessages((prev: any) => new Map(prev.set(memberName, editMessage.trim())));
                 setEditingMember(null);
                 setEditMessage("");
             } catch (err: any) {
@@ -206,6 +216,36 @@ export default function GuildPage() {
 
     const handleNameClick = (memberName: string) => {
         navigator.clipboard.writeText(`exiva "${memberName}`);
+    };
+
+    const handleMarkAsExited = async (member: GuildMember) => {
+        try {
+            setProcessingExit(member.name);
+            
+            await markMemberAsExited(member.name);
+            
+            const freshData = await getGuildData();
+            setGuild(freshData);
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setProcessingExit(null);
+        }
+    };
+
+    const handleUnmarkAsExited = async (member: GuildMember) => {
+        try {
+            setProcessingExit(member.name);
+            
+            await unmarkMemberAsExited(member.name);
+            
+            const freshData = await getGuildData();
+            setGuild(freshData);
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setProcessingExit(null);
+        }
     };
 
     const getMemberMessage = (name: string) => {
@@ -238,9 +278,10 @@ export default function GuildPage() {
         </div>
     );
 
-    const { info, vocations } = guild;
+    const { info, vocations, exitedVocations } = guild;
 
-    const MemberRow = ({ member, isMain = false }: { member: GuildMember; isMain?: boolean }) => (
+    const MemberRow = ({ member, isMain = false, showExitButton = true }: { member: GuildMember; isMain?: boolean; showExitButton?: boolean }) => {
+        return (
         <tr key={member.name} className="border-b border-gray-700 hover:bg-gray-700">
             <td className="p-1 truncate max-w-[100px]">
                 <span
@@ -269,7 +310,7 @@ export default function GuildPage() {
                         <input
                             type="text"
                             value={editMessage}
-                            onChange={(e) => setEditMessage(e.target.value)}
+                            onChange={(e: any) => setEditMessage(e.target.value)}
                             maxLength={50}
                             className="w-full p-0.5 text-xs bg-gray-700 border border-gray-600 rounded flex-1"
                             placeholder="Local..."
@@ -285,6 +326,7 @@ export default function GuildPage() {
                         <button
                             onClick={() => setEditingMember(null)}
                             className="bg-gray-600 text-white px-1 py-0.5 rounded text-xs"
+                            title="Cancelar"
                         >
                             <X size={12} />
                         </button>
@@ -299,8 +341,26 @@ export default function GuildPage() {
                     </span>
                 )}
             </td>
+
+            {showExitButton && (
+                                                             <td className="p-1 text-center">
+                                                                 <button
+                                                                     onClick={() => handleMarkAsExited(member)}
+                                                                     disabled={processingExit === member.name}
+                                                                     className="bg-red-600 text-white px-1 py-0.5 rounded text-xs hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                                     title="Marcar como exitado"
+                                                                 >
+                                                                     {processingExit === member.name ? (
+                                                                         <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
+                                                                     ) : (
+                                                                         <UserMinus size={12} />
+                                                                     )}
+                                                                 </button>
+                                                             </td>
+            )}
         </tr>
-    );
+        );
+    };
 
     return (
         <div className="p-2 w-full min-h-screen">
@@ -358,19 +418,63 @@ export default function GuildPage() {
             <div className="w-full">
                 <h1 className="text-xl font-bold mb-4 text-center">{info.name}</h1>
                 
-                <div className="mb-4 p-2 bg-gray-900 rounded-lg text-center max-w-2xl mx-auto relative">
-                    <p className="text-sm flex items-center justify-center gap-1">
-                        <Users size={16} />
-                        Total: {info.total}
-                    </p>
-                    <p className="text-sm text-green-400 flex items-center justify-center gap-1">
-                        <UserCheck size={16} />
-                        Online: {info.online}
-                    </p>
-                    <p className="text-sm text-gray-400 flex items-center justify-center gap-1">
-                        <UserX size={16} />
-                        Offline: {info.offline}
-                    </p>
+                <div className="mb-4 p-2 bg-gray-900 rounded-lg max-w-2xl mx-auto relative">
+                    <div className="flex justify-center">
+                        <div className="flex flex-col items-start gap-1">
+                            <p className="text-sm flex items-center gap-1">
+                                <Users size={16} />
+                                Total: {info.total}
+                            </p>
+                            
+                            <p className="text-sm text-green-400 flex items-center gap-1">
+                                <UserCheck size={16} />
+                                Online: {info.online} 
+                                {exitedVocations && Object.values(exitedVocations).flat().length > 0 && (
+                                    <span className="text-red-400">
+                                        ({Object.values(exitedVocations).flat().length} exitados)
+                                    </span>
+                                )}
+                            </p>
+                            
+                            {/* Contagem de Mains - filha do Online */}
+                            {vocations && (
+                                <p className="text-sm text-blue-400 flex items-center gap-1 ml-4">
+                                    <UserCheck size={14} />
+                                    ├─ Mains online: {Object.values(vocations).flat().filter(m => m.level >= 100).length}
+                                    {exitedVocations && Object.values(exitedVocations).flat().filter(m => m.level >= 100).length > 0 && (
+                                        <span className="text-red-400">
+                                            ({Object.values(exitedVocations).flat().filter(m => m.level >= 100).length} exitados)
+                                        </span>
+                                    )}
+                                </p>
+                            )}
+                            
+                            {/* Contagem de Bombas - filha do Online */}
+                            {vocations && (
+                                <p className="text-sm text-orange-400 flex items-center gap-1 ml-4">
+                                    <UserCheck size={14} />
+                                    └─ Bombas online: {Object.values(vocations).flat().filter(m => m.level < 100).length}
+                                    {exitedVocations && Object.values(exitedVocations).flat().filter(m => m.level < 100).length > 0 && (
+                                        <span className="text-red-400">
+                                            ({Object.values(exitedVocations).flat().filter(m => m.level < 100).length} exitados)
+                                        </span>
+                                    )}
+                                </p>
+                            )}
+                            
+                            <p className="text-sm text-gray-400 flex items-center gap-1">
+                                <UserX size={16} />
+                                Offline: {info.offline}
+                            </p>
+
+                            {lastUpdate && (
+                                <p className="text-xs text-gray-400 flex items-center gap-1">
+                                    <Clock size={12} />
+                                    Última atualização: {lastUpdate.toLocaleTimeString()}
+                                </p>
+                            )}
+                        </div>
+                    </div>
                     
                     <button
                         onClick={() => setShowConfig(true)}
@@ -379,13 +483,6 @@ export default function GuildPage() {
                     >
                         <Settings size={16} />
                     </button>
-
-                    {lastUpdate && (
-                        <p className="text-xs text-gray-400 mt-1 flex items-center justify-center gap-1">
-                            <Clock size={12} />
-                            Última atualização: {lastUpdate.toLocaleTimeString()}
-                        </p>
-                    )}
                 </div>
 
                 <div className="mb-4">
@@ -393,7 +490,7 @@ export default function GuildPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 w-full">
                         {VOCATIONS.map(vocation => {
                             const vocationMembers = vocations[vocation] || [];
-                            const mains = vocationMembers.filter(m => m.level >= 100); 
+                            const mains = vocationMembers.filter((m: any) => m.level >= 100); 
                             
                             return (
                                 <div key={`main-${vocation}`} className="border border-gray-600 rounded p-2 bg-gray-800 w-full">
@@ -424,12 +521,13 @@ export default function GuildPage() {
                                                         >
                                                             Online <SortIcon columnKey="lastSeen" />
                                                         </th>
-                                                        <th className="text-left p-1 text-xs text-gray-400 w-[35%]">Obs</th>
+                                                        <th className="text-left p-1 text-xs text-gray-400 w-[30%]">Obs</th>
+                                                        <th className="text-center p-1 text-xs text-gray-400 w-[15%]">Ação</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
                                                     {sortMembers(mains).map(member => (
-                                                        <MemberRow key={member.name} member={member} isMain={true} />
+                                                        <MemberRow key={member.name} member={member} isMain={true} showExitButton={true} />
                                                     ))}
                                                 </tbody>
                                             </table>
@@ -446,7 +544,7 @@ export default function GuildPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 w-full">
                         {VOCATIONS.map(vocation => {
                             const vocationMembers = vocations[vocation] || [];
-                            const bombas = vocationMembers.filter(m => m.level < 100); 
+                            const bombas = vocationMembers.filter((m: any) => m.level < 100); 
                             
                             return (
                                 <div key={`bomba-${vocation}`} className="border border-gray-600 rounded p-2 bg-gray-800 w-full">
@@ -477,12 +575,13 @@ export default function GuildPage() {
                                                         >
                                                             Online <SortIcon columnKey="lastSeen" />
                                                         </th>
-                                                        <th className="text-left p-1 text-xs text-gray-400 w-[35%]">Obs</th>
+                                                        <th className="text-left p-1 text-xs text-gray-400 w-[30%]">Obs</th>
+                                                        <th className="text-center p-1 text-xs text-gray-400 w-[15%]">Ação</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
                                                     {sortMembers(bombas).map(member => (
-                                                        <MemberRow key={member.name} member={member} />
+                                                        <MemberRow key={member.name} member={member} isMain={false} showExitButton={true} />
                                                     ))}
                                                 </tbody>
                                             </table>
@@ -493,6 +592,107 @@ export default function GuildPage() {
                         })}
                     </div>
                 </div>
+
+                {exitedVocations && (
+                    <div className="mb-4">
+                        <h2 className="text-lg font-bold mb-2 text-center text-red-600">Exitados</h2>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 w-full">
+                            {VOCATIONS.map(vocation => {
+                                const vocationMembers = exitedVocations[vocation] || [];
+                            
+                            return (
+                                <div key={`exited-${vocation}`} className="border border-gray-600 rounded p-2 bg-gray-800 w-full">
+                                    <h3 className="font-semibold text-center mb-1 text-red-400 truncate text-sm">{vocation}</h3>
+                                    
+                                    {vocationMembers.length === 0 ? (
+                                        <p className="text-gray-500 text-center text-xs">Nenhum exitado</p>
+                                    ) : (
+                                        <div className="w-full">
+                                            <table className="w-full">
+                                                <thead>
+                                                    <tr className="border-b border-gray-600">
+                                                        <th 
+                                                            className="text-left p-1 text-xs text-gray-400 w-[35%] cursor-pointer hover:bg-gray-700"
+                                                            onClick={() => handleSort('name')}
+                                                        >
+                                                            Nome <SortIcon columnKey="name" />
+                                                        </th>
+                                                        <th 
+                                                            className="text-center p-1 text-xs text-gray-400 w-[15%] cursor-pointer hover:bg-gray-700"
+                                                            onClick={() => handleSort('level')}
+                                                        >
+                                                            Level <SortIcon columnKey="level" />
+                                                        </th>
+                                                        <th 
+                                                            className="text-center p-1 text-xs text-gray-400 w-[15%] cursor-pointer hover:bg-gray-700"
+                                                            onClick={() => handleSort('lastSeen')}
+                                                        >
+                                                            Online <SortIcon columnKey="lastSeen" />
+                                                        </th>
+                                                        <th className="text-left p-1 text-xs text-gray-400 w-[30%]">Obs</th>
+                                                        <th className="text-center p-1 text-xs text-gray-400 w-[15%]">Ação</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {sortMembers(vocationMembers).map(member => (
+                                                        <tr key={member.name} className="border-b border-gray-700 hover:bg-gray-700">
+                                                            <td className="p-1 truncate max-w-[100px]">
+                                                                <span
+                                                                    className="cursor-pointer text-blue-300 hover:text-blue-200 text-xs flex items-center gap-1"
+                                                                    onClick={() => handleNameClick(member.name)}
+                                                                    title={member.name}
+                                                                >
+                                                                    {member.name}
+                                                                    <Copy size={10} className="opacity-0 group-hover:opacity-100" />
+                                                                </span>
+                                                            </td>
+                                                            
+                                                            <td className="p-1 text-center">
+                                                                <span className="bg-red-600 text-white px-1 py-0.5 rounded text-xs">
+                                                                    {member.level}
+                                                                </span>
+                                                            </td>
+                                                            
+                                                            <td className="p-1 text-center">
+                                                                <OnlineTimer lastSeen={member.lastSeen} />
+                                                            </td>
+
+                                                            <td className="p-1 truncate max-w-[100px]">
+                                                                <span
+                                                                    className="cursor-pointer text-xs text-gray-300 hover:text-white truncate block"
+                                                                    onClick={() => handleEditStart(member)}
+                                                                    title={getMemberMessage(member.name) || "Clique para adicionar observação"}
+                                                                >
+                                                                    {getMemberMessage(member.name) || "..."}
+                                                                </span>
+                                                            </td>
+
+                                                            <td className="p-1 text-center">
+                                                                <button
+                                                                    onClick={() => handleUnmarkAsExited(member)}
+                                                                    disabled={processingExit === member.name}
+                                                                    className="bg-green-600 text-white px-1 py-0.5 rounded text-xs hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                                    title="Desmarcar como exitado"
+                                                                >
+                                                                    {processingExit === member.name ? (
+                                                                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
+                                                                    ) : (
+                                                                        <UserPlus size={12} />
+                                                                    )}
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                        </div>
+                    </div>
+                )}
 
                 {info.online === 0 && (
                     <div className="text-center py-4 mt-4">
