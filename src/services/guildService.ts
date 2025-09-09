@@ -7,6 +7,7 @@ interface GuildAnalysis {
         online: number;
         offline: number;
         total: number;
+        external?: number;
     };
     vocations: Record<string, GuildMember[]>;
     exitedVocations: Record<string, GuildMember[]>;
@@ -15,10 +16,19 @@ interface GuildAnalysis {
         below: GuildMember[];
     };
     sorted: GuildMember[];
+    externalCharacters?: Array<{
+        name: string;
+        level: number;
+        vocation: string;
+        status: string;
+        lastSeen: Date | null;
+        isExited: boolean;
+        isExternal: boolean;
+    }>;
 }
 
 export async function getGuildData(): Promise<GuildAnalysis> {
-    const url = `/api/guild/data`;
+    const url = `/api/guild/combined-data`;
     return fetchData<GuildAnalysis>(url);
 }
 

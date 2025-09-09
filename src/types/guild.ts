@@ -5,6 +5,7 @@ export interface GuildMember {
     status: string;
     lastSeen: Date;
     isExited: boolean;
+    isExternal?: boolean;
 }
 
 export interface Guild {
@@ -20,12 +21,23 @@ export interface GuildResponse {
     guild: Guild;
 }
 
+export interface ExternalCharacter {
+    name: string;
+    level: number;
+    vocation: string;
+    status: string;
+    lastSeen: Date | null;
+    isExited: boolean;
+    isExternal: boolean;
+}
+
 export interface GuildAnalysis {
     info: {
         name: string;
         online: number;
         offline: number;
         total: number;
+        external?: number;
     };
     vocations: Record<string, GuildMember[]>;
     exitedVocations: Record<string, GuildMember[]>;
@@ -39,4 +51,5 @@ export interface GuildAnalysis {
         below: GuildMember[];
     };
     exitedSorted: GuildMember[];
+    externalCharacters?: ExternalCharacter[];
 }

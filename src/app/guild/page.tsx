@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { getGuildData, markMemberAsExited, unmarkMemberAsExited } from "@/services/guildService"; 
 import { getMessages, saveMessage } from "@/services/messageService";
-import { GuildMember } from "@/types/guild";
+import { addExternalCharacter, removeExternalCharacter, markExternalCharacterAsExited, unmarkExternalCharacterAsExited } from "@/services/externalCharacterService";
+import { GuildMember, ExternalCharacter } from "@/types/guild";
 import { useMassLogAlert } from "@/hooks/useMassLogAlert";
 import MassLogConfig from "@/components/MassLogConfig";
 import { Settings, AlertTriangle, AlertCircle, Users, UserCheck, UserX, Clock, Copy, Check, X, RotateCw, RefreshCw, ArrowUp, ArrowDown, UserMinus, UserPlus } from "lucide-react";
@@ -14,6 +15,7 @@ interface GuildAnalysis {
         online: number;
         offline: number;
         total: number;
+        external?: number;
     };
     vocations: Record<string, GuildMember[]>;
     exitedVocations: Record<string, GuildMember[]>;
@@ -22,6 +24,7 @@ interface GuildAnalysis {
         below: GuildMember[];
     };
     sorted: GuildMember[];
+    externalCharacters?: ExternalCharacter[];
 }
 
 const OnlineTimer = ({ lastSeen }: { lastSeen: Date }) => {
@@ -78,6 +81,11 @@ export default function GuildPage() {
     const [showConfig, setShowConfig] = useState(false);
     const [processingExit, setProcessingExit] = useState<string | null>(null);
     
+    // Estados para personagens externos
+    const [showAddCharacterModal, setShowAddCharacterModal] = useState(false);
+    const [newCharacterName, setNewCharacterName] = useState("");
+    const [addingCharacter, setAddingCharacter] = useState(false);
+    
     // Estados para ordenação
     const [sortConfig, setSortConfig] = useState<{
         key: 'name' | 'level' | 'lastSeen';
@@ -89,6 +97,34 @@ export default function GuildPage() {
 
     const { config, saveConfig, currentAlert, setCurrentAlert, checkMassLogs, lastAlertTime, resetCooldown, isOnCooldown } = useMassLogAlert();
     const VOCATIONS = ['Druid', 'Knight', 'Sorcerer', 'Paladin', 'Monk'];
+    
+    // Função para mapear vocações promovidas para vocações básicas
+    const getBaseVocation = (vocation: string): string => {
+        const vocationMap: { [key: string]: string } = {
+            'Elder Druid': 'Druid',
+            'Elite Knight': 'Knight',
+            'Master Sorcerer': 'Sorcerer',
+            'Royal Paladin': 'Paladin',
+            'Exalted Monk': 'Monk',
+            'Druid': 'Druid',
+            'Knight': 'Knight',
+            'Sorcerer': 'Sorcerer',
+            'Paladin': 'Paladin',
+            'Monk': 'Monk'
+        };
+        return vocationMap[vocation] || vocation;
+    };
+
+    // Função para converter ExternalCharacter para GuildMember
+    const convertExternalToGuildMember = (char: ExternalCharacter): GuildMember => ({
+        name: char.name,
+        vocation: char.vocation,
+        level: char.level,
+        status: char.status,
+        lastSeen: char.lastSeen || new Date(),
+        isExited: char.isExited,
+        isExternal: true
+    });
 
     // Função para ordenar membros
     const sortMembers = (members: GuildMember[]): GuildMember[] => {
@@ -252,6 +288,68 @@ export default function GuildPage() {
         return messages.get(name) || '';
     };
 
+    // Funções para personagens externos
+    const handleAddExternalCharacter = async () => {
+        if (!newCharacterName.trim()) return;
+        
+        try {
+            setAddingCharacter(true);
+            await addExternalCharacter(newCharacterName.trim());
+            setNewCharacterName("");
+            setShowAddCharacterModal(false);
+            
+            // Recarregar dados
+            const freshData = await getGuildData();
+            setGuild(freshData);
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setAddingCharacter(false);
+        }
+    };
+
+    const handleRemoveExternalCharacter = async (name: string) => {
+        try {
+            await removeExternalCharacter(name);
+            
+            // Recarregar dados
+            const freshData = await getGuildData();
+            setGuild(freshData);
+        } catch (err: any) {
+            setError(err.message);
+        }
+    };
+
+    const handleMarkExternalAsExited = async (character: ExternalCharacter) => {
+        try {
+            setProcessingExit(character.name);
+            await markExternalCharacterAsExited(character.name);
+            
+            // Recarregar dados
+            const freshData = await getGuildData();
+            setGuild(freshData);
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setProcessingExit(null);
+        }
+    };
+
+    const handleUnmarkExternalAsExited = async (character: ExternalCharacter) => {
+        try {
+            setProcessingExit(character.name);
+            await unmarkExternalCharacterAsExited(character.name);
+            
+            // Recarregar dados
+            const freshData = await getGuildData();
+            setGuild(freshData);
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setProcessingExit(null);
+        }
+    };
+
     if (loading) return (
         <div className="p-2 text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
@@ -289,6 +387,11 @@ export default function GuildPage() {
                     onClick={() => handleNameClick(member.name)}
                     title={member.name}
                 >
+                    {member.isExternal && (
+                        <span className="bg-purple-600 text-white px-1 py-0.5 rounded text-xs font-bold">
+                            E
+                        </span>
+                    )}
                     {member.name}
                     <Copy size={10} className="opacity-0 group-hover:opacity-100" />
                 </span>
@@ -476,13 +579,22 @@ export default function GuildPage() {
                         </div>
                     </div>
                     
-                    <button
-                        onClick={() => setShowConfig(true)}
-                        className="absolute top-2 right-2 bg-blue-600 text-white p-2 rounded text-xs hover:bg-blue-700 transition-colors"
-                        title="Configurar alertas de mass log"
-                    >
-                        <Settings size={16} />
-                    </button>
+                    <div className="absolute top-2 right-2 flex gap-2">
+                        <button
+                            onClick={() => setShowAddCharacterModal(true)}
+                            className="bg-green-600 text-white p-2 rounded text-xs hover:bg-green-700 transition-colors"
+                            title="Adicionar personagem externo"
+                        >
+                            <UserPlus size={16} />
+                        </button>
+                        <button
+                            onClick={() => setShowConfig(true)}
+                            className="bg-blue-600 text-white p-2 rounded text-xs hover:bg-blue-700 transition-colors"
+                            title="Configurar alertas de mass log"
+                        >
+                            <Settings size={16} />
+                        </button>
+                    </div>
                 </div>
 
                 <div className="mb-4">
@@ -490,7 +602,10 @@ export default function GuildPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 w-full">
                         {VOCATIONS.map(vocation => {
                             const vocationMembers = vocations[vocation] || [];
-                            const mains = vocationMembers.filter((m: any) => m.level >= 100); 
+                            const externalMembers = guild.externalCharacters?.filter(char => getBaseVocation(char.vocation) === vocation) || [];
+                            const convertedExternalMembers = externalMembers.map(convertExternalToGuildMember);
+                            const allMembers = [...vocationMembers, ...convertedExternalMembers];
+                            const mains = allMembers.filter((m: any) => m.level >= 100); 
                             
                             return (
                                 <div key={`main-${vocation}`} className="border border-gray-600 rounded p-2 bg-gray-800 w-full">
@@ -544,7 +659,10 @@ export default function GuildPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 w-full">
                         {VOCATIONS.map(vocation => {
                             const vocationMembers = vocations[vocation] || [];
-                            const bombas = vocationMembers.filter((m: any) => m.level < 100); 
+                            const externalMembers = guild.externalCharacters?.filter(char => getBaseVocation(char.vocation) === vocation) || [];
+                            const convertedExternalMembers = externalMembers.map(convertExternalToGuildMember);
+                            const allMembers = [...vocationMembers, ...convertedExternalMembers];
+                            const bombas = allMembers.filter((m: any) => m.level < 100); 
                             
                             return (
                                 <div key={`bomba-${vocation}`} className="border border-gray-600 rounded p-2 bg-gray-800 w-full">
@@ -694,6 +812,7 @@ export default function GuildPage() {
                     </div>
                 )}
 
+
                 {info.online === 0 && (
                     <div className="text-center py-4 mt-4">
                         <p className="text-sm text-gray-500">Nenhum membro online no momento</p>
@@ -707,6 +826,91 @@ export default function GuildPage() {
                     onSave={saveConfig}
                     onClose={() => setShowConfig(false)}
                 />
+            )}
+
+            {/* Modal para adicionar personagem externo */}
+            {showAddCharacterModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-gray-800 p-6 rounded-lg max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto">
+                        <h3 className="text-lg font-bold mb-4 text-white">Adicionar Personagem Externo</h3>
+                        
+                        <div className="mb-4">
+                            <label className="block text-sm font-medium text-gray-300 mb-2">
+                                Nome do Personagem
+                            </label>
+                            <input
+                                type="text"
+                                value={newCharacterName}
+                                onChange={(e) => setNewCharacterName(e.target.value)}
+                                placeholder="Digite o nome do personagem"
+                                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                onKeyPress={(e) => {
+                                    if (e.key === 'Enter') {
+                                        handleAddExternalCharacter();
+                                    }
+                                }}
+                            />
+                        </div>
+
+                        {/* Lista de personagens externos já adicionados */}
+                        <div className="mb-4">
+                            <h4 className="text-sm font-medium text-gray-300 mb-2">
+                                Personagens Externos Adicionados ({guild?.externalCharacters?.length || 0})
+                            </h4>
+                            {guild?.externalCharacters && guild.externalCharacters.length > 0 ? (
+                                <div className="max-h-32 overflow-y-auto bg-gray-700 rounded-md p-2">
+                                    <div className="space-y-1">
+                                        {guild.externalCharacters.map((char) => (
+                                            <div
+                                                key={char.name}
+                                                className="flex items-center justify-between bg-gray-600 rounded px-2 py-1 hover:bg-gray-500 transition-colors"
+                                            >
+                                                <div className="flex items-center gap-2 flex-1 min-w-0">
+                                                    <span className="text-purple-300 truncate">
+                                                        {char.name}
+                                                    </span>
+                                                    <span className="text-gray-400 text-xs">
+                                                        Lv.{char.level}
+                                                    </span>
+                                                </div>
+                                                <button
+                                                    onClick={() => handleRemoveExternalCharacter(char.name)}
+                                                    className="text-red-400 hover:text-red-300 hover:bg-red-900 rounded p-1 transition-colors"
+                                                    title="Remover do monitoramento"
+                                                >
+                                                    <X size={12} />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="bg-gray-700 rounded-md p-3 text-center">
+                                    <p className="text-gray-400 text-sm">Nenhum personagem externo adicionado ainda</p>
+                                </div>
+                            )}
+                        </div>
+                        
+                        <div className="flex gap-2 justify-end">
+                            <button
+                                onClick={() => {
+                                    setShowAddCharacterModal(false);
+                                    setNewCharacterName("");
+                                }}
+                                className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleAddExternalCharacter}
+                                disabled={!newCharacterName.trim() || addingCharacter}
+                                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                {addingCharacter ? 'Adicionando...' : 'Adicionar'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

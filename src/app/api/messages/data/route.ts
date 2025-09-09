@@ -45,7 +45,6 @@ export async function POST(request: NextRequest) {
         }
 
         const { name, message } = await request.json();
-
         // Validação de entrada
         if (!name || !message) {
             return NextResponse.json(
